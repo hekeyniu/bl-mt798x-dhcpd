@@ -247,21 +247,15 @@ static int mtk_snfi_exec_op(struct spi_slave *slave,
 	if (inlen && op->cmd.opcode == 0x9F && op->data.dir == SPI_MEM_DATA_IN) {
 		u8 *id_buf = (u8 *)op->data.buf.in;
 
-		// 串口打印读取到的真实 ID，方便你在 TTL 下观察拦截行为
-		printf("\n[MTK SNFI HOOK] Intercepted Read ID! Raw: %02x %02x %02x %02x\n", 
-		       id_buf[0], id_buf[1], id_buf[2], id_buf[3]);
-
 		/* 
-		 * 拦截江波龙 F35SQA001G 在当前环境下读出 cd7171cd 的特征
-		 * 强行将其篡改替换为爱快和原厂完美支持的华邦 W25N01GV 的标准 3 字节 ID：0xEF 0xAA 0x21
+		 * 拦截江波龙 F35SQA001G 读出的错位特征 cd 71 71 cd
+		 * 使用标准数组下标进行静默掉包，避免任何指针和类型转换引发的编译警告
 		 */
 		if (id_buf[0] == 0xCD && id_buf[1] == 0x71) {
-			printf("[MTK SNFI HOOK] Target Flash detected! Spoofing to Winbond W25N01GV...\n");
-			
 			id_buf[0] = 0xEF; // Winbond 厂商 ID
 			id_buf[1] = 0xAA; // Device ID 1
 			id_buf[2] = 0x21; // Device ID 2
-			id_buf[3] = 0xEF; // 补齐第四字节，保持错位特征对齐
+			id_buf[3] = 0xEF; // 补齐第四字节，保持内核期望的错位特征
 		}
 	}
 	/* ------------------ 魔改代码结束 ------------------ */
