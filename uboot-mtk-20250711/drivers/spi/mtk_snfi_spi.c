@@ -243,20 +243,12 @@ static int mtk_snfi_exec_op(struct spi_slave *slave,
 		mtk_snfi_copy_from_gpram(priv, gpram_cache, op->data.buf.in,
 					 len, inlen);
 
-	/* ------------------ 开始插入魔改欺骗代码 ------------------ */
-	if (inlen && op->cmd.opcode == 0x9F && op->data.dir == SPI_MEM_DATA_IN) {
-		u8 *id_buf = (u8 *)op->data.buf.in;
-
-		/* 
-		 * 拦截江波龙 F35SQA001G 读出的错位特征 cd 71 71 cd
-		 * 使用标准数组下标进行静默掉包，避免任何指针和类型转换引发的编译警告
-		 */
-		if (id_buf[0] == 0xCD && id_buf[1] == 0x71) {
-			id_buf[0] = 0xEF; // Winbond 厂商 ID
-			id_buf[1] = 0xAA; // Device ID 1
-			id_buf[2] = 0x21; // Device ID 2
-			id_buf[3] = 0xEF; // 补齐第四字节，保持内核期望的错位特征
-		}
+	/* ------------------ 终极魔改：强制全时段 ID 欺骗 ------------------ */
+	if (op->cmd.opcode == 0x9F) {
+		((u8 *)op->data.buf.in)[0] = 0xEF; // 强行塞入 Winbond 厂商 ID
+		((u8 *)op->data.buf.in)[1] = 0xAA; // 设备 ID 1
+		((u8 *)op->data.buf.in)[2] = 0x21; // 设备 ID 2
+		((u8 *)op->data.buf.in)[3] = 0xEF; // 补齐第四字节错位
 	}
 	/* ------------------ 魔改代码结束 ------------------ */
 
